@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Presentation Order Picker</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: Calibri, Arial, sans-serif;
+      padding: 30px;
+      background: linear-gradient(135deg, #fceff9, #e0f7fa);
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    input {
+      display: block;
+      margin: 0 auto 20px auto;
+      padding: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      display: block;
+      margin: 0 auto;
+      padding: 15px 30px;
+      font-size: 18px;
+      border: none;
+      border-radius: 12px;
+      background-color: #a5d6a7;
+      color: #fff;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background-color: #81c784;
+      transform: scale(1.05);
+    }
+
+    #output {
+      margin-top: 40px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .group {
+      background: #ffffffcc;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    ol {
+      padding-left: 20px;
+    }
+
+  </style>
+</head>
+<body>
+  <h1>🎤 Random Presentation Order</h1>
+
+  <input type="file" id="fileInput" accept=".xlsx" />
+  <button onclick="processFile()">✨ Generate Groups</button>
+
+  <div id="output"></div>
+
+  <script>
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function processFile() {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert('Please upload an Excel file.');
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+        let students = json.map(row => row[0]).filter(v => v);
+
+        if (students.length !== 40) {
+          alert('Student count must be 40. Current: ' + students.length);
+          return;
+        }
+
+        students = shuffle(students);
+
+        const group1 = students.slice(0, 13);
+        const group2 = students.slice(13, 26);
+        const group3 = students.slice(26);
+
+        display(group1, group2, group3);
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+
+    function display(g1, g2, g3) {
+      const output = document.getElementById('output');
+
+      function makeGroup(title, group) {
+        let html = `<div class="group"><h2>${title}</h2><ol>`;
+        group.forEach(s => {
+          html += `<li>${s}</li>`;
+        });
+        html += '</ol></div>';
+        return html;
+      }
+
+      output.innerHTML =
+        makeGroup('Group 1 (13)', g1) +
+        makeGroup('Group 2 (13)', g2) +
+        makeGroup('Group 3 (14)', g3);
+    }
+  </script>
+</body>
+</html>
