@@ -168,20 +168,38 @@
       let currentTeam = null;
 
       rows.forEach(row => {
-        const firstCell = String(row[0]).trim();
-        const secondCell = String(row[1]).trim();
+        const cells = row.map(cell => String(cell).trim());
 
-        if (/^TEAM\s*\d+/i.test(firstCell)) {
+        // Find TEAM cell anywhere in the row because Excel merged cells
+        // or formatting may not place TEAM text exactly in the first column.
+        const teamCell = cells.find(cell => /^TEAM\\s*\\d+/i.test(cell));
+
+        if (teamCell) {
           if (currentTeam) teams.push(currentTeam);
           currentTeam = {
-            name: firstCell.toUpperCase(),
+            name: teamCell.toUpperCase(),
             members: []
           };
-        } else if (currentTeam && firstCell !== "") {
-          currentTeam.members.push({
-            name: firstCell,
-            id: secondCell
-          });
+          return;
+        }
+
+        if (currentTeam) {
+          // Find student name and ID from the row.
+          // Usually name is in the first non-empty text cell,
+          // and student ID is the first numeric-looking cell.
+          const idCell = cells.find(cell => /^\\d{6,}$/.test(cell));
+          const nameCell = cells.find(cell =>
+            cell !== "" &&
+            cell !== idCell &&
+            !/^TEAM\\s*\\d+/i.test(cell)
+          );
+
+          if (nameCell) {
+            currentTeam.members.push({
+              name: nameCell,
+              id: idCell || ""
+            });
+          }
         }
       });
 
