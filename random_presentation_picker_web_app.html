@@ -1,25 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Presentation Order Picker</title>
+  <meta charset="UTF-8" />
+  <title>Team Presentation Order Picker</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    button { margin: 10px 0; padding: 10px; }
-    .group { margin-top: 20px; }
+    body {
+      font-family: Calibri, Arial, sans-serif;
+      padding: 30px;
+      background: linear-gradient(135deg, #fceff9, #e0f7fa);
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 36px;
+    }
+
+    .subtitle {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 18px;
+      color: #555;
+    }
+
+    .upload-box {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 25px;
+      background: #ffffffcc;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    input {
+      margin: 15px 0;
+      padding: 12px;
+      font-size: 17px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 16px 34px;
+      font-size: 20px;
+      border: none;
+      border-radius: 14px;
+      background-color: #a5d6a7;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background-color: #81c784;
+      transform: scale(1.05);
+    }
+
+    #output {
+      margin-top: 40px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 22px;
+    }
+
+    .day-card {
+      background: #ffffffdd;
+      padding: 22px;
+      border-radius: 20px;
+      box-shadow: 0 5px 14px rgba(0,0,0,0.12);
+    }
+
+    .day-card h2 {
+      text-align: center;
+      margin-top: 0;
+      font-size: 26px;
+    }
+
+    .team-box {
+      background: #f8f9ff;
+      margin: 14px 0;
+      padding: 15px;
+      border-radius: 14px;
+      border-left: 6px solid #b39ddb;
+    }
+
+    .team-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #4a4a4a;
+    }
+
+    .member {
+      font-size: 16px;
+      margin-left: 12px;
+      line-height: 1.5;
+    }
+
+    .warning {
+      margin-top: 20px;
+      text-align: center;
+      color: #d32f2f;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <h1>Random Presentation Order Picker</h1>
+  <h1>🎤 Team Presentation Order Picker</h1>
+  <div class="subtitle">Upload an Excel file containing TEAM 1 to TEAM 9</div>
 
-  <input type="file" id="fileInput" accept=".xlsx" />
-  <br>
-  <button onclick="processFile()">Generate Groups</button>
+  <div class="upload-box">
+    <input type="file" id="fileInput" accept=".xlsx" />
+    <br />
+    <button onclick="processFile()">✨ Generate Schedule</button>
+  </div>
 
   <div id="output"></div>
 
   <script>
+    const dates = ["6/8", "6/10", "6/15"];
+
     function shuffle(array) {
       for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -29,11 +132,11 @@
     }
 
     function processFile() {
-      const fileInput = document.getElementById('fileInput');
+      const fileInput = document.getElementById("fileInput");
       const file = fileInput.files[0];
 
       if (!file) {
-        alert('Please upload an Excel file.');
+        alert("Please upload an Excel file.");
         return;
       }
 
@@ -41,47 +144,76 @@
 
       reader.onload = function(e) {
         const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-
+        const workbook = XLSX.read(data, { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
-        // Assume first column contains student IDs
-        let students = json.map(row => row[0]).filter(v => v);
+        const teams = parseTeams(rows);
 
-        if (students.length !== 40) {
-          alert('Student count must be 40. Current: ' + students.length);
+        if (teams.length !== 9) {
+          document.getElementById("output").innerHTML =
+            `<div class="warning">Expected 9 teams, but found ${teams.length}. Please check the Excel format.</div>`;
           return;
         }
 
-        students = shuffle(students);
-
-        const group1 = students.slice(0, 13);
-        const group2 = students.slice(13, 26);
-        const group3 = students.slice(26);
-
-        display(group1, group2, group3);
+        const shuffledTeams = shuffle(teams);
+        displaySchedule(shuffledTeams);
       };
 
       reader.readAsArrayBuffer(file);
     }
 
-    function display(g1, g2, g3) {
-      const output = document.getElementById('output');
+    function parseTeams(rows) {
+      const teams = [];
+      let currentTeam = null;
 
-      function makeGroup(title, group) {
-        let html = `<div class="group"><h2>${title}</h2><ol>`;
-        group.forEach(s => {
-          html += `<li>${s}</li>`;
+      rows.forEach(row => {
+        const firstCell = String(row[0]).trim();
+        const secondCell = String(row[1]).trim();
+
+        if (/^TEAM\s*\d+/i.test(firstCell)) {
+          if (currentTeam) teams.push(currentTeam);
+          currentTeam = {
+            name: firstCell.toUpperCase(),
+            members: []
+          };
+        } else if (currentTeam && firstCell !== "") {
+          currentTeam.members.push({
+            name: firstCell,
+            id: secondCell
+          });
+        }
+      });
+
+      if (currentTeam) teams.push(currentTeam);
+      return teams;
+    }
+
+    function displaySchedule(teams) {
+      const output = document.getElementById("output");
+      let html = "";
+
+      for (let day = 0; day < 3; day++) {
+        const dayTeams = teams.slice(day * 3, day * 3 + 3);
+
+        html += `<div class="day-card">`;
+        html += `<h2>📅 ${dates[day]}</h2>`;
+
+        dayTeams.forEach((team, index) => {
+          html += `<div class="team-box">`;
+          html += `<div class="team-title">${index + 1}. ${team.name}</div>`;
+
+          team.members.forEach(member => {
+            html += `<div class="member">${member.name} ${member.id ? "(" + member.id + ")" : ""}</div>`;
+          });
+
+          html += `</div>`;
         });
-        html += '</ol></div>';
-        return html;
+
+        html += `</div>`;
       }
 
-      output.innerHTML =
-        makeGroup('Group 1 (13)', g1) +
-        makeGroup('Group 2 (13)', g2) +
-        makeGroup('Group 3 (14)', g3);
+      output.innerHTML = html;
     }
   </script>
 </body>
